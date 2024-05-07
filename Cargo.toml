@@ -28,8 +28,7 @@ default = []
 ros2 = ["r2r"]
 
 [dependencies]
-# edgefirst-schemas = { git = "https://github.com/MaivinAI/schemas", rev = "2fdc0ef"}
-edgefirst-schemas = { path = "../schemas" }
+edgefirst-schemas = { git = "https://github.com/MaivinAI/schemas", rev = "ce00f8f"}
 async-std = { version = "1.12", features = ["attributes"] }
 log = "0.4"
 env_logger = "0.11"
