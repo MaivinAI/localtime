@@ -1,0 +1,41 @@
+[package]
+name = "localtime"
+version = "0.0.0"
+edition = "2021"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
+debug = false
+
+[profile.profiling]
+inherits = "release"
+strip = false
+debug = true
+
+[[bin]]
+name = "maivin-localtime"
+path = "src/maivin/main.rs"
+
+[[bin]]
+name = "ros2-localtime"
+path = "src/ros2/main.rs"
+required-features = ["ros2"]
+
+[features]
+default = []
+ros2 = ["r2r"]
+
+[dependencies]
+# edgefirst-schemas = { git = "https://github.com/MaivinAI/schemas", rev = "2fdc0ef"}
+edgefirst-schemas = { path = "../schemas" }
+async-std = { version = "1.12", features = ["attributes"] }
+log = "0.4"
+env_logger = "0.11"
+cdr = "0.2"
+clap = { version = "4.5", features = ["derive"] }
+unix-ts = "1.0"
+zenoh = "0.10.0-rc"
+r2r = { version = "0.8.4", optional = true }
+chrono = "0.4.38"
