@@ -2,12 +2,7 @@ use cdr::{CdrLe, Infinite};
 use chrono::{Datelike as _, Offset as _, Timelike as _};
 use clap::Parser;
 use edgefirst_schemas::{builtin_interfaces, edgefirst_msgs, std_msgs};
-use std::{
-    error::Error,
-    str::FromStr,
-    time::{Duration, SystemTime},
-};
-use unix_ts::Timestamp;
+use std::{error::Error, str::FromStr, time::Duration};
 use zenoh::{config::Config, prelude::r#async::*};
 
 #[derive(Parser, Debug, Clone)]
@@ -46,18 +41,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let publisher = session.declare_publisher(args.topic).res().await.unwrap();
 
     loop {
-        let ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
-        let ts = Timestamp::from_nanos(ts.as_nanos() as i128);
         let now = chrono::Local::now();
         let localtime = now.time();
         let timezone = now.offset().fix().local_minus_utc() / 60;
 
         let msg = edgefirst_msgs::LocalTime {
             header: std_msgs::Header {
-                stamp: builtin_interfaces::Time {
-                    sec: ts.seconds() as i32,
-                    nanosec: ts.subsec(9),
-                },
+                stamp: timestamp()?,
                 frame_id: "".to_string(),
             },
             date: edgefirst_msgs::Date {
@@ -83,4 +73,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
         publisher.put(encoded).res().await.unwrap();
         async_std::task::sleep(Duration::from_secs(1)).await;
     }
+}
+
+fn timestamp() -> Result<builtin_interfaces::Time, std::io::Error> {
+    let mut tp = libc::timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+    let err = unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC_RAW, &mut tp) };
+    if err != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+
+    Ok(builtin_interfaces::Time {
+        sec: tp.tv_sec as i32,
+        nanosec: tp.tv_nsec as u32,
+    })
 }

@@ -34,7 +34,7 @@ log = "0.4"
 env_logger = "0.11"
 cdr = "0.2"
 clap = { version = "4.5", features = ["derive"] }
-unix-ts = "1.0"
 zenoh = "0.10.0-rc"
 r2r = { version = "0.8.4", optional = true }
 chrono = "0.4.38"
+libc = "0.2.154"
