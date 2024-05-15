@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let publisher = node.create_publisher::<LocalTime>("/localtime", QosProfile::default())?;
 
     loop {
-        let mut clock = r2r::Clock::create(r2r::ClockType::RosTime)?;
+        let mut clock = r2r::Clock::create(r2r::ClockType::SteadyTime)?;
         let rostime = clock.get_now()?;
         let now = chrono::Local::now();
         let localtime = now.time();
@@ -38,7 +38,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 nanosec: localtime.nanosecond(),
             },
             timezone: timezone as i16,
-            ..Default::default()
         };
 
         log::trace!("LocalTime: {:?}", msg);
