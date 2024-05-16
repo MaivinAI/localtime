@@ -43,4 +43,5 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v2
       with:
-        files: maivin-localtime-$GIT_VERSION
+        fail_on_unmatched_files: true
+        files: maivin-localtime-*
