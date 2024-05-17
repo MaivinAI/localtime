@@ -29,12 +29,12 @@ ros2 = ["r2r"]
 
 [dependencies]
 edgefirst-schemas = "1.2.1"
-async-std = { version = "1.12", features = ["attributes"] }
-log = "0.4"
-env_logger = "0.11"
-cdr = "0.2"
-clap = { version = "4.5", features = ["derive"] }
+async-std = { version = "1.12.0", features = ["attributes"] }
+log = "0.4.21"
+env_logger = "0.11.3"
+cdr = "0.2.4"
+clap = { version = "4.5.4", features = ["derive"] }
 zenoh = "0.10.0-rc"
 r2r = { version = "0.8.4", optional = true }
 chrono = "0.4.38"
-libc = "0.2.154"
+libc = "0.2.153"
