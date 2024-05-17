@@ -21,7 +21,11 @@ jobs:
           cargo audit --json > audit.json || true
           cargo outdated --depth 1 --format json > outdated.json || true
           cargo sonar --clippy --audit --outdated
-          ls -l sonar-issues.json
+      - name: Save Sonar Issues
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-issues
+          path: sonar-issues.json
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
