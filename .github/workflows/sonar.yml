@@ -9,12 +9,20 @@ jobs:
   sonarcloud:
     name: SonarCloud
     runs-on: ubuntu-latest
+    container:
+      image: deepview/rust:1.78.0
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: Static Analysis
+        run: |
+          cargo clippy --target=aarch64-unknown-linux-gnu --message-format=json > clippy.json || true
+          cargo audit --json > audit.json || true
+          cargo outdated --depth 1 --format json > outdated.json || true
+          cargo sonar --clippy --audit --outdated
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
