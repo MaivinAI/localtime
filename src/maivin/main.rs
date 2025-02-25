@@ -2,43 +2,78 @@ use cdr::{CdrLe, Infinite};
 use chrono::{Datelike as _, Offset as _, Timelike as _};
 use clap::Parser;
 use edgefirst_schemas::{builtin_interfaces, edgefirst_msgs, std_msgs};
-use std::{error::Error, str::FromStr, time::Duration};
-use zenoh::{config::Config, prelude::r#async::*};
+use serde_json::json;
+use std::{error::Error, time::Duration};
+use zenoh::{
+    bytes::{Encoding, ZBytes},
+    config::{Config, WhatAmI},
+};
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// zenoh connection mode
-    #[arg(long, default_value = "client")]
-    mode: String,
-
-    /// connect to endpoint
-    #[arg(short, long, default_value = "tcp/127.0.0.1:7447")]
-    endpoint: Vec<String>,
-
     /// topic name
     #[arg(long, default_value = "rt/localtime")]
     topic: String,
+
+    /// zenoh connection mode
+    #[arg(long, env, default_value = "peer")]
+    mode: WhatAmI,
+
+    /// connect to zenoh endpoints
+    #[arg(long, env)]
+    connect: Vec<String>,
+
+    /// listen to zenoh endpoints
+    #[arg(long, env)]
+    listen: Vec<String>,
+
+    /// disable zenoh multicast scouting
+    #[arg(long, env)]
+    no_multicast_scouting: bool,
 }
 
-#[async_std::main]
+impl From<Args> for Config {
+    fn from(args: Args) -> Self {
+        let mut config = Config::default();
+
+        config
+            .insert_json5("mode", &json!(args.mode).to_string())
+            .unwrap();
+
+        if !args.connect.is_empty() {
+            config
+                .insert_json5("connect/endpoints", &json!(args.connect).to_string())
+                .unwrap();
+        }
+
+        if !args.listen.is_empty() {
+            config
+                .insert_json5("listen/endpoints", &json!(args.listen).to_string())
+                .unwrap();
+        }
+
+        if args.no_multicast_scouting {
+            config
+                .insert_json5("scouting/multicast/enabled", &json!(false).to_string())
+                .unwrap();
+        }
+
+        config
+            .insert_json5("scouting/multicast/interface", &json!("lo").to_string())
+            .unwrap();
+
+        config
+    }
+}
+
+#[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
     env_logger::init();
 
-    let mut config = Config::default();
-    let mode = WhatAmI::from_str(&args.mode)?;
-    config.set_mode(Some(mode)).unwrap();
-    config.connect.endpoints = args.endpoint.iter().map(|v| v.parse().unwrap()).collect();
-    let _ = config.scouting.multicast.set_enabled(Some(false));
-    let session = zenoh::open(config).res_async().await.unwrap().into_arc();
-    log::info!(
-        "Opened Zenoh session [mode: {} endpoint: {:?}]",
-        args.mode,
-        args.endpoint
-    );
-
-    let publisher = session.declare_publisher(args.topic).res().await.unwrap();
+    let session = zenoh::open(args.clone()).await.unwrap();
+    let publisher = session.declare_publisher(args.topic).await.unwrap();
 
     loop {
         let now = chrono::Local::now();
@@ -64,14 +99,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         log::trace!("LocalTime: {:?}", msg);
 
-        let encoding = Encoding::WithSuffix(
-            KnownEncoding::AppOctetStream,
-            "edgefirst_msgs/msg/LocalTime".into(),
-        );
-        let encoded = cdr::serialize::<_, _, CdrLe>(&msg, Infinite)?;
-        let encoded = Value::from(encoded).encoding(encoding);
-        publisher.put(encoded).res().await.unwrap();
-        async_std::task::sleep(Duration::from_secs(1)).await;
+        let msg = ZBytes::from(cdr::serialize::<_, _, CdrLe>(&msg, Infinite)?);
+        let enc = Encoding::APPLICATION_CDR.with_schema("edgefirst_msgs/msg/LocalTime");
+        publisher.put(msg).encoding(enc).await.unwrap();
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }
 
